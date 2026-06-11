@@ -1,0 +1,20 @@
+# Personal data — never enters version control (privacy is structural)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

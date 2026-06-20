@@ -7,5 +7,30 @@ call is logged to ``data/llm_logs/`` (gitignored). Prompt templates live in
 """
 
 from .client import LLMClient, LLMError, OllamaClient, OllamaConfig
+from .tasks import (
+    ParsedItem,
+    ParsedQuery,
+    ParsedResidence,
+    ParsedZone,
+    extract_surfaces,
+    parse_loss_interview,
+    parse_residence,
+    parse_search_query,
+    phrase_reason,
+)
 
-__all__ = ["LLMClient", "LLMError", "OllamaClient", "OllamaConfig"]
+__all__ = [
+    "LLMClient",
+    "LLMError",
+    "OllamaClient",
+    "OllamaConfig",
+    "ParsedItem",
+    "ParsedQuery",
+    "ParsedResidence",
+    "ParsedZone",
+    "extract_surfaces",
+    "parse_loss_interview",
+    "parse_residence",
+    "parse_search_query",
+    "phrase_reason",
+]

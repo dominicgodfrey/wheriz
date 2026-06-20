@@ -99,6 +99,13 @@ def test_stats_renders_finds_and_improving_trend(make_app):
     assert "fewer" in r.text  # the improving-trend copy
 
 
+def test_stats_documents_the_full_wipe(make_app):
+    """The only reset is out-of-app (delete data/); the page must keep saying how."""
+    client = make_app(available=False)
+    r = client.get("/stats")
+    assert "data" in r.text and "rm -rf data" in r.text
+
+
 def test_stats_never_surfaces_memory_log(make_app):
     """A mismatch is logged silently; the stats page must not expose it as a score."""
     client = make_app(available=False)

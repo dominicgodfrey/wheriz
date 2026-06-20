@@ -37,6 +37,11 @@ Core stance: deterministic scoring, LLM at the edges only, zones score / surface
 - Run app: `python -m wwiw.main` (serves http://127.0.0.1:8741)
 - Tests: `python -m pytest`
 - Install: `pip install -e .[dev]`
+- **Full wipe** (erase everything — timeline, finds, photos, logs): quit the app, then
+  delete the `data/` folder — `Remove-Item -Recurse -Force data` (PowerShell) /
+  `rm -rf data` (POSIX). This is the *only* reset: it stays out-of-app on purpose
+  (finds/searches are append-only, so there is no in-app destructive button); the next
+  launch recreates an empty `data/`. The stats page links these instructions.
 
 ## Conventions
 

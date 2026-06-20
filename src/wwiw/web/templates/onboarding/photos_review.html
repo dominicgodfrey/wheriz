@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Setup · {{ zone.name }} surfaces{% endblock %}
+{% block content %}
+  <ul class="steps"><li class="done">1 · Rooms</li><li class="active">2 · Photos</li><li>3 · Things</li></ul>
+  <h1>{{ zone.name }} — surfaces</h1>
+
+  {% if note == 'offline' %}
+    <div class="notice">The local model isn't running, so I couldn't read the photo.
+      You can still type the surfaces by hand below.</div>
+  {% elif detected %}
+    <p class="muted">I spotted these places where small things might rest. Uncheck any that
+      don't belong, add any I missed, then save.</p>
+  {% else %}
+    <p class="muted">Nothing detected from a photo. Add the room's surfaces by hand below.</p>
+  {% endif %}
+
+  <form method="post" action="/onboarding/photos/{{ zone.id }}/save">
+    {% if detected %}
+      <ul class="surfaces">
+        {% for s in detected %}
+        <li><label class="check">
+          <input type="checkbox" name="surface" value="{{ s }}" checked> {{ s }}
+        </label></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <label for="manual_text">Add surfaces by hand (one per line)</label>
+    <textarea id="manual_text" name="manual_text" placeholder="bookshelf&#10;windowsill"></textarea>
+    <p class="row">
+      <button class="btn" type="submit">Save surfaces</button>
+      <a class="btn secondary" href="/onboarding/photos">Back to rooms</a>
+    </p>
+  </form>
+{% endblock %}

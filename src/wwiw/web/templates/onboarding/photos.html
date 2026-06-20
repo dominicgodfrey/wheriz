@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Setup · Photos{% endblock %}
+{% block content %}
+  <ul class="steps"><li class="done">1 · Rooms</li><li class="active">2 · Photos</li><li>3 · Things</li></ul>
+  <h1>Add room photos <span class="muted">(optional)</span></h1>
+  <p class="muted">A photo lets me list the surfaces where small things tend to land —
+    counters, tables, the arm of the couch. These just decorate suggestions later;
+    you can skip any room and add surfaces by hand instead.</p>
+
+  {% if not has_zones %}
+    <div class="notice">No rooms to add photos to yet. <a href="/onboarding/rooms">Map your rooms first →</a></div>
+  {% else %}
+    {% for row in rows %}
+      <div class="card">
+        <h2>{{ row.zone.name }}</h2>
+        {% if row.surfaces %}
+          <p class="muted">Surfaces so far:
+            {{ row.surfaces | map(attribute='name') | join(', ') }}</p>
+        {% else %}
+          <p class="muted">No surfaces yet.</p>
+        {% endif %}
+        <form method="post" action="/onboarding/photos/{{ row.zone.id }}" enctype="multipart/form-data">
+          <label for="photo-{{ row.zone.id }}">Photo of this room</label>
+          <input id="photo-{{ row.zone.id }}" type="file" name="photo" accept="image/*">
+          <p><button class="btn secondary" type="submit">Find surfaces →</button></p>
+        </form>
+      </div>
+    {% endfor %}
+    <p class="row"><a class="btn" href="/onboarding/items">Continue to things →</a></p>
+  {% endif %}
+{% endblock %}

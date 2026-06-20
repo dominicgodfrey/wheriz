@@ -4,6 +4,7 @@ An ambient item-finding system. Stage 0 MVP: full reasoning engine, onboarding, 
 
 - **Design reference** (decisions, architecture, data model, scoring spec): `MVP.md`
 - **Living progress tracker** (current phase, what's done, what's next): `MVP-PLAN.md` — read at session start, update before session end
+- **Open issues** (unresolved decisions, deferred work): `OPEN-ISSUES.md`
 - **Full product concept**: `item-finder-project-plan.md`
 
 Core stance: deterministic scoring, LLM at the edges only, zones score / surfaces decorate.

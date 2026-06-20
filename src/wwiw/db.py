@@ -546,6 +546,21 @@ def read_timeline(conn: sqlite3.Connection) -> list[DwellEntry]:
     return out
 
 
+def recent_dwell_entries(conn: sqlite3.Connection, limit: int = 10) -> list[sqlite3.Row]:
+    """The most recently *ended* dwell intervals, with their zone name and source.
+
+    Display-only — the quick-log page echoes back what's been logged so the user can see
+    it took. The engine never reads this (it consumes :func:`read_timeline`); the ``source``
+    column surfaces here purely so the page can label retrospective vs. quick-logged stays.
+    """
+    return conn.execute(
+        "SELECT d.id, d.zone_id, z.name AS zone_name, d.enter, d.exit, d.source "
+        "FROM dwell_entries d JOIN zones z ON z.id = d.zone_id "
+        "ORDER BY d.exit DESC, d.id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
 # --- Searches (append-only history; status may advance) -----------------------
 
 
@@ -693,6 +708,24 @@ def record_find(
     return int(cur.lastrowid)
 
 
+def list_finds(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every confirmed find, oldest first, joined to its item and zone names.
+
+    This is the read behind the stats view: ``was_suggested_rank`` and ``places_checked``
+    together form the rank-of-actual-location signal trended over time. Oldest-first so a
+    consumer can plot the learning curve in chronological order.
+    """
+    return conn.execute(
+        "SELECT f.id, f.zone_id, z.name AS zone_name, f.was_suggested_rank, "
+        "f.places_checked, f.created_at, s.item_id, i.name AS item_name "
+        "FROM finds f "
+        "JOIN searches s ON s.id = f.search_id "
+        "JOIN items i ON i.id = s.item_id "
+        "JOIN zones z ON z.id = f.zone_id "
+        "ORDER BY f.created_at, f.id"
+    ).fetchall()
+
+
 def log_memory(
     conn: sqlite3.Connection,
     search_id: int,
@@ -738,6 +771,7 @@ __all__ = [
     "initialize",
     "list_dwell_zones",
     "list_edges",
+    "list_finds",
     "list_items",
     "list_suggestions",
     "list_surfaces",
@@ -748,6 +782,7 @@ __all__ = [
     "read_failure_modes",
     "read_priors",
     "read_timeline",
+    "recent_dwell_entries",
     "record_find",
     "reject_suggestion",
     "set_prior",

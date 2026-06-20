@@ -113,6 +113,24 @@ def test_add_dwell_entry_normalizes_bad_source(conn, home):
     assert src == "retrospective"
 
 
+def test_recent_dwell_entries_orders_by_end_and_carries_name_and_source(conn, home):
+    db.add_dwell_entry(conn, "living-room", NOW - timedelta(hours=3), NOW - timedelta(hours=2))
+    db.add_dwell_entry(conn, "kitchen", NOW - timedelta(hours=1), NOW, source="quicklog")
+    rows = db.recent_dwell_entries(conn, limit=10)
+    # Most recently ended first; zone name + source come back for display labelling.
+    assert [(r["zone_id"], r["zone_name"], r["source"]) for r in rows] == [
+        ("kitchen", "Kitchen", "quicklog"),
+        ("living-room", "Living Room", "retrospective"),
+    ]
+
+
+def test_recent_dwell_entries_respects_limit(conn, home):
+    for i in range(5):
+        start = NOW - timedelta(hours=5 - i)
+        db.add_dwell_entry(conn, "kitchen", start, start + timedelta(minutes=30))
+    assert len(db.recent_dwell_entries(conn, limit=3)) == 3
+
+
 # --- searches -----------------------------------------------------------------
 
 
@@ -192,6 +210,28 @@ def test_finds_are_append_only(conn, home):
         conn.execute("UPDATE finds SET zone_id='kitchen' WHERE id=?", (fid,))
     with pytest.raises(Exception):
         conn.execute("DELETE FROM finds WHERE id=?", (fid,))
+
+
+def test_list_finds_is_chronological_with_names_and_metrics(conn, home):
+    s1 = db.create_search(conn, "keys", anchor_claim_text=None, anchor_time=None, now=NOW)
+    s2 = db.create_search(conn, "keys", anchor_claim_text=None, anchor_time=None, now=NOW)
+    db.record_find(
+        conn, s1, "kitchen", was_suggested_rank=1, places_checked=1,
+        now=NOW - timedelta(hours=1),
+    )
+    db.record_find(
+        conn, s2, "living-room", was_suggested_rank=2, places_checked=2, now=NOW
+    )
+    finds = db.list_finds(conn)
+    assert [(f["item_name"], f["zone_name"], f["was_suggested_rank"], f["places_checked"])
+            for f in finds] == [
+        ("Keys", "Kitchen", 1, 1),
+        ("Keys", "Living Room", 2, 2),
+    ]
+
+
+def test_list_finds_empty_when_no_finds(conn, home):
+    assert db.list_finds(conn) == []
 
 
 def test_memory_log_is_silent_and_append_only(conn, home):

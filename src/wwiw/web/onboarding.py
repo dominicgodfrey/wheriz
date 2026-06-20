@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import db
-from ..llm.client import LLMClient
+from ..llm.client import LLMClient, LLMError
 from ..llm.tasks import (
     ParsedItem,
     ParsedResidence,
@@ -58,12 +58,21 @@ def rooms_parse(
     templates: Jinja2Templates = Depends(get_templates),
 ):
     """Parse the description into a reviewable room graph (nothing saved yet)."""
-    available = llm.is_available()
-    residence = parse_residence(llm, description) if available else _offline_rooms(description)
+    # is_available() only means the server answered — a model may still be missing or a
+    # call may fail. Fall back to the simple split on any model failure so setup never 500s.
+    residence = None
+    if llm.is_available():
+        try:
+            residence = parse_residence(llm, description)
+        except LLMError:
+            residence = None
+    fell_back = residence is None
+    if residence is None:
+        residence = _offline_rooms(description)
     return templates.TemplateResponse(
         request,
         "onboarding/rooms_review.html",
-        {"zones": residence.zones, "edges": residence.edges, "offline": not available},
+        {"zones": residence.zones, "edges": residence.edges, "offline": fell_back},
     )
 
 
@@ -132,8 +141,11 @@ async def photos_extract(
     if photo is not None and photo.filename:
         data = await photo.read()
         if data and llm.is_available():
-            detected = extract_surfaces(llm, [data], zone.name)
-        elif data and not llm.is_available():
+            try:
+                detected = extract_surfaces(llm, [data], zone.name)
+            except LLMError:
+                note = "offline"  # model present-but-failing -> manual entry
+        elif data:
             note = "offline"
 
     return templates.TemplateResponse(
@@ -210,10 +222,16 @@ def items_parse(
 ):
     """Parse the answers into reviewable items + home guesses (nothing saved yet)."""
     zones = db.list_zones(conn)
-    available = llm.is_available()
-    if available:
-        parsed = parse_loss_interview(llm, _combine_answers(q1, q2, q3), [z.name for z in zones])
-    else:
+    parsed = None
+    if llm.is_available():
+        try:
+            parsed = parse_loss_interview(
+                llm, _combine_answers(q1, q2, q3), [z.name for z in zones]
+            )
+        except LLMError:
+            parsed = None
+    fell_back = parsed is None
+    if parsed is None:
         parsed = _offline_items(q1)
 
     rows = []
@@ -225,7 +243,7 @@ def items_parse(
     return templates.TemplateResponse(
         request,
         "onboarding/items_review.html",
-        {"rows": rows, "zones": zones, "offline": not available},
+        {"rows": rows, "zones": zones, "offline": fell_back},
     )
 
 

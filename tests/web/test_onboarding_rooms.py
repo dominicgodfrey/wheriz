@@ -3,6 +3,7 @@
 import json
 
 from wwiw import db
+from wwiw.llm.client import LLMError
 
 RESIDENCE_JSON = json.dumps(
     {
@@ -43,10 +44,20 @@ def test_rooms_parse_offline_falls_back_to_line_split(make_app):
     client = make_app(available=False)
     resp = client.post("/onboarding/rooms/parse", data={"description": "Kitchen\nBedroom\n"})
     assert resp.status_code == 200
-    assert "isn't running" in resp.text  # offline notice
+    assert "couldn't reach the local model" in resp.text  # fallback notice
     assert 'value="Kitchen"' in resp.text
     assert 'value="Bedroom"' in resp.text
     assert client.llm.calls == []  # model never called when unavailable
+
+
+def test_rooms_parse_falls_back_when_model_errors(make_app):
+    # Server reachable but the model call fails (e.g. no model pulled) -> graceful fallback.
+    client = make_app(responses={"parse_residence": LLMError("model not found")})
+    resp = client.post("/onboarding/rooms/parse", data={"description": "Kitchen\nDen"})
+    assert resp.status_code == 200  # no 500
+    assert "couldn't reach the local model" in resp.text
+    assert 'value="Kitchen"' in resp.text and 'value="Den"' in resp.text
+    assert client.llm.calls[0]["task"] == "parse_residence"  # it did try the model first
 
 
 def test_rooms_confirm_persists_zones_and_edges(make_app):

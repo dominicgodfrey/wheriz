@@ -29,11 +29,18 @@ class FakeLLM:
 
     def generate_text(self, prompt, *, task, format=None, options=None) -> str:
         self.calls.append({"kind": "text", "task": task, "prompt": prompt})
-        return self.responses.get(task, "")
+        return self._respond(task)
 
     def generate_vision(self, prompt, images, *, task, format=None, options=None) -> str:
         self.calls.append({"kind": "vision", "task": task, "prompt": prompt, "images": list(images)})
-        return self.responses.get(task, "")
+        return self._respond(task)
+
+    def _respond(self, task: str) -> str:
+        """Return the scripted response, or raise it if a model failure was scripted."""
+        resp = self.responses.get(task, "")
+        if isinstance(resp, BaseException):
+            raise resp
+        return resp
 
 
 @pytest.fixture

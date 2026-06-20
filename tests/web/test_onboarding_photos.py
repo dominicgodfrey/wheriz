@@ -3,6 +3,7 @@
 import json
 
 from wwiw import db
+from wwiw.llm.client import LLMError
 
 SURFACES_JSON = json.dumps({"surfaces": ["kitchen counter", "kitchen table"]})
 
@@ -52,8 +53,20 @@ def test_photos_extract_offline_shows_notice_and_skips_model(make_app):
         files={"photo": ("kitchen.jpg", b"PNGDATA", "image/jpeg")},
     )
     assert resp.status_code == 200
-    assert "isn't running" in resp.text
+    assert "couldn't reach the local model" in resp.text
     assert client.llm.calls == []
+
+
+def test_photos_extract_falls_back_when_model_errors(make_app):
+    client = make_app(responses={"extract_surfaces": LLMError("model not found")})
+    zid = _seed_zone(client, "Kitchen")
+    resp = client.post(
+        f"/onboarding/photos/{zid}",
+        files={"photo": ("kitchen.jpg", b"PNGDATA", "image/jpeg")},
+    )
+    assert resp.status_code == 200  # no 500; manual entry still offered
+    assert "couldn't reach the local model" in resp.text
+    assert client.llm.calls[0]["task"] == "extract_surfaces"
 
 
 def test_photos_save_persists_detected_and_manual_with_sources(make_app):

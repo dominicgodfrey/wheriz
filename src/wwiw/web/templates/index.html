@@ -15,12 +15,15 @@
         Takes a couple of minutes, and you can edit everything afterward.</p>
       <p><a class="btn" href="/onboarding/rooms">Start setup</a></p>
     {% else %}
-      <h2>You're set up</h2>
-      <p class="muted">{{ zone_count }} room{{ '' if zone_count == 1 else 's' }} mapped,
-        {{ item_count }} item{{ '' if item_count == 1 else 's' }} tracked.</p>
+      <h2>Lost something?</h2>
+      <p class="muted">Tell me what's missing and roughly when you last had it — I'll
+        retrace where you've been and suggest a few good places to look.</p>
       <p class="row">
-        <a class="btn" href="/onboarding/rooms">Review setup</a>
+        <a class="btn" href="/find">Find something</a>
+        <a class="btn secondary" href="/onboarding/rooms">Review setup</a>
       </p>
+      <p class="muted" style="font-size:.85rem">{{ zone_count }} room{{ '' if zone_count == 1 else 's' }} mapped,
+        {{ item_count }} item{{ '' if item_count == 1 else 's' }} tracked.</p>
     {% endif %}
   </div>
 {% endblock %}

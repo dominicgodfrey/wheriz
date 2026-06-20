@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Find something{% endblock %}
+{% block content %}
+  <h1>What's missing?</h1>
+
+  {% if not has_items %}
+    <div class="notice">I don't track anything yet. <a href="/onboarding/items">Add a few
+      things first →</a> then come back when something wanders off.</div>
+  {% else %}
+    {% if unresolved %}
+      <div class="notice">I couldn't tell what "{{ unresolved }}" is. Pick it from the list,
+        or try naming it the way you set it up.</div>
+    {% endif %}
+
+    <p class="muted">Tell me what you're looking for and, if you can, when you last had it —
+      "my keys, I think after dinner". A rough memory is plenty; I'll widen it.</p>
+
+    <form method="post" action="/find">
+      <label for="query">Where is my…</label>
+      <input type="text" id="query" name="query" autofocus
+             placeholder="my keys — I had them after dinner">
+
+      <label for="item_id">Or pick from your things</label>
+      <select id="item_id" name="item_id">
+        <option value="">— from the text above —</option>
+        {% for it in items %}
+        <option value="{{ it.id }}">{{ it.name }}</option>
+        {% endfor %}
+      </select>
+
+      <p><button class="btn" type="submit">Help me look</button></p>
+    </form>
+  {% endif %}
+{% endblock %}

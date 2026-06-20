@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Looking for your {{ item.name }}{% endblock %}
+{% block content %}
+  <h1>Your {{ item.name }}</h1>
+
+  {% if home %}
+    <div class="card">
+      <p>It usually lives in <strong>{{ home.name }}</strong>{% if surface %}, often on the
+        <strong>{{ surface }}</strong>{% endif %}. Worth a quick look there first?</p>
+      <form method="post" action="/find/{{ search_id }}/confirm" class="row" style="margin-bottom:8px">
+        <input type="hidden" name="zone_id" value="{{ home.id }}">
+        <input type="hidden" name="was_suggested_rank" value="1">
+        <button class="btn" type="submit">Yes — found it there</button>
+      </form>
+      <form method="post" action="/find/{{ search_id }}/reject-home">
+        <button class="btn secondary" type="submit">Not there — help me retrace</button>
+      </form>
+    </div>
+  {% else %}
+    <div class="card">
+      <p class="muted">I don't have a usual spot for your {{ item.name }} yet
+        {%- if anchor %}, but you mentioned <em>{{ anchor }}</em>{% endif %}. Let's retrace
+        where you've been and I'll suggest a few places.</p>
+      <form method="post" action="/find/{{ search_id }}/reject-home">
+        <button class="btn" type="submit">Retrace my steps</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <p class="muted"><a href="/find">Look for something else</a></p>
+{% endblock %}

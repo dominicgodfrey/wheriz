@@ -65,7 +65,8 @@ def test_full_wizard_persists_a_usable_home(make_app):
     suggestion = first_pass_suggestion(items_by_name["keys"], priors=keys_priors)
     assert suggestion is not None and suggestion.zone_id == "kitchen"
 
-    # Landing page now reflects a set-up home.
+    # Landing page now reflects a set-up home and offers the find loop.
     body = client.get("/").text
-    assert "You're set up" in body
+    assert "Lost something?" in body
+    assert 'href="/find"' in body
     assert "3 rooms" in body and "2 items" in body

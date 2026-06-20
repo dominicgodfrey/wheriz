@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Where Was I When{% endblock %}
 {% block content %}
+  {% if followup and followup_item %}
+  <div class="notice">
+    <p style="margin-top:0">Earlier you were looking for your <strong>{{ followup_item.name }}</strong>.
+      Did it turn up?</p>
+    <form method="post" action="/find/{{ followup.id }}/followup" class="row">
+      <button class="btn" name="outcome" value="found" type="submit">Yes — I found it</button>
+      <button class="btn secondary" name="outcome" value="gone" type="submit">Not yet</button>
+    </form>
+  </div>
+  {% endif %}
+
   <h1>Where was I when…?</h1>
   <p class="muted">
     A gentle helper for the things that wander off. It learns your home and your habits,

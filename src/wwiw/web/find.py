@@ -512,6 +512,7 @@ async def confirm_find(
     )
 
     db.set_search_status(conn, search_id, "found")
+    db.mark_followed_up(conn, search_id)  # resolved -> never nudge about it later
 
     found_zone = db.get_zone(conn, found_zone_id)
     surface = db.get_surface(conn, surface_id).name if surface_id else None
@@ -527,6 +528,51 @@ async def confirm_find(
             "away": away,
             "leads_now": leads_now,
         },
+    )
+
+
+# --- next-app-open follow-up (ask once, then let it go) ------------------------
+
+
+@router.post("/{search_id}/followup")
+async def followup(
+    search_id: int,
+    request: Request,
+    conn=Depends(get_conn),
+):
+    """Answer the single "did you ever find it?" nudge for an open search.
+
+    Either way the search is marked followed up so we never ask twice. "Found" hands off
+    to recording where (which closes it with learning); "still missing" lets it expire.
+    """
+    search = db.get_search(conn, search_id)
+    if search is None or search.status != "open":
+        return RedirectResponse("/", status_code=303)
+    db.mark_followed_up(conn, search_id)
+
+    form = await request.form()
+    if str(form.get("outcome", "")).strip() == "found":
+        return RedirectResponse(f"/find/{search_id}/where", status_code=303)
+    db.set_search_status(conn, search_id, "expired")  # asked once, now let it go
+    return RedirectResponse("/", status_code=303)
+
+
+@router.get("/{search_id}/where", response_class=HTMLResponse)
+def where_form(
+    search_id: int,
+    request: Request,
+    conn=Depends(get_conn),
+    templates: Jinja2Templates = Depends(get_templates),
+):
+    """A light "where did it turn up?" record form for a followed-up find."""
+    search = db.get_search(conn, search_id)
+    if search is None or search.status != "open":
+        return RedirectResponse("/", status_code=303)
+    item = db.get_item(conn, search.item_id)
+    return templates.TemplateResponse(
+        request,
+        "find/where.html",
+        {"search_id": search_id, "item": item, "zones": db.list_dwell_zones(conn)},
     )
 
 

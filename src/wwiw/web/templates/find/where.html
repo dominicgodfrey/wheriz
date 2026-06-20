@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Where was your {{ item.name }}?{% endblock %}
+{% block content %}
+  <h1>Where did your {{ item.name }} turn up?</h1>
+  <p class="muted">Tell me where it was and I'll learn from it — so it's an easier find
+    next time.</p>
+
+  <form method="post" action="/find/{{ search_id }}/confirm" class="card">
+    <label for="zone_id">It was in…</label>
+    <select id="zone_id" name="zone_id">
+      <option value="">— pick a room —</option>
+      {% for z in zones %}
+      <option value="{{ z.id }}">{{ z.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="other_zone">Or somewhere not listed</label>
+    <input type="text" id="other_zone" name="other_zone" placeholder="e.g. the car">
+
+    <p><button class="btn" type="submit">That's where it was</button></p>
+  </form>
+{% endblock %}

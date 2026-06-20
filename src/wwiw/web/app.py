@@ -38,13 +38,17 @@ def create_app(
         conn=Depends(get_conn),
         templates: Jinja2Templates = Depends(get_templates),
     ):
-        """Landing page: shows onboarding progress and the entry point."""
+        """Landing page: onboarding progress, the entry point, and any open-search nudge."""
+        followup = db.next_followup_search(conn)
+        followup_item = db.get_item(conn, followup.item_id) if followup else None
         return templates.TemplateResponse(
             request,
             "index.html",
             {
                 "zone_count": db.count_zones(conn),
                 "item_count": db.count_items(conn),
+                "followup": followup,
+                "followup_item": followup_item,
             },
         )
 

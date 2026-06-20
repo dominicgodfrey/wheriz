@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}How it's doing{% endblock %}
+{% block content %}
+  <h1>How it's doing</h1>
+  <p class="muted">A quiet measure of whether I'm earning my keep: how many places you
+    check before something turns up. Fewer is better, and the hope is it drifts down as I
+    learn your habits.</p>
+
+  {% if stats.total == 0 %}
+    <div class="card">
+      <p>No finds yet. Once you've found a few things with my help, you'll see here
+        whether I'm getting sharper.</p>
+      <p><a class="btn" href="/find">Find something</a></p>
+    </div>
+  {% else %}
+    <div class="card">
+      <p class="row" style="justify-content:space-between">
+        <span><strong>{{ stats.total }}</strong> thing{{ '' if stats.total == 1 else 's' }} found</span>
+        {% if stats.avg_places is not none %}
+        <span class="muted">{{ "%.1f"|format(stats.avg_places) }} places checked on average</span>
+        {% endif %}
+      </p>
+
+      {% if stats.trend == "improving" %}
+        <p class="muted">You're checking <strong>fewer</strong> places lately
+          ({{ "%.1f"|format(stats.early_avg) }} → {{ "%.1f"|format(stats.recent_avg) }}) — I seem to be learning.</p>
+      {% elif stats.trend == "slipping" %}
+        <p class="muted">A touch more checking lately
+          ({{ "%.1f"|format(stats.early_avg) }} → {{ "%.1f"|format(stats.recent_avg) }}). Still learning your habits.</p>
+      {% elif stats.trend == "steady" %}
+        <p class="muted">Holding steady at about {{ "%.1f"|format(stats.recent_avg) }} places a find.</p>
+      {% else %}
+        <p class="muted">Still early — find a few more things and a trend will show up here.</p>
+      {% endif %}
+    </div>
+
+    <h2>Each find</h2>
+    <p class="muted" style="font-size:.85rem">Oldest first. Shorter bar = fewer places checked.</p>
+    <ul class="items">
+      {% for r in stats.rows %}
+      <li>
+        <div class="row" style="justify-content:space-between">
+          <span><strong>{{ r.item }}</strong> — {{ r.zone }}</span>
+          <span class="muted" style="font-size:.85rem">
+            {{ r.places_checked }} checked{% if r.rank %}, suggested #{{ r.rank }}{% endif %}
+          </span>
+        </div>
+        <div style="height:8px;background:var(--line);border-radius:4px;margin-top:6px">
+          <div style="height:8px;border-radius:4px;background:var(--accent);width:{{ r.bar_pct }}%"></div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <p class="row" style="margin-top:18px">
+    <a class="btn secondary" href="/">Home</a>
+  </p>
+{% endblock %}

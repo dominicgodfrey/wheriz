@@ -7,17 +7,21 @@
 
 ## Current Phase
 
-**M4 — Search + find loop** (next). M0–M3 complete.
+**M5 — Quick dwell-log + stats view + full-wipe** (next). M0–M4 complete.
 
 ## Active Sub-Task
 
-None active. Next session: M4 — the find loop (highest-leverage UX): query box + anchor →
-retrospective timeline interview ("where have you been since?") → ranked tappable
-suggestions (engine `rank_zones` + `phrase_reason`) → one-tap confirm / "none of these" +
-free text → learning update + acknowledgment; next-app-open follow-up for open searches.
-**Runtime note:** Ollama server is now running, but `ollama list` shows **no models pulled**
+None active. Next session: M5 — the hybrid stub's second half + instrumentation:
+(1) a minimal **quick dwell-log** page that appends `(zone, enter, exit, source=quicklog)`
+rows (the timeline read path + `add_dwell_entry` already exist; the find loop already reads
+the whole timeline, so quick-logged dwells will feed ranking for free);
+(2) a **stats view** trending rank-of-actual-location and places-checked over time (read
+from `finds.was_suggested_rank` / `finds.places_checked`); (3) a **full-wipe** affordance
+(delete `data/` — keep it out-of-app per the privacy rule, so likely just documented).
+**Runtime note:** Ollama server is running, but `ollama list` shows **no models pulled**
 yet — `ollama pull` the text/vision models before live dogfooding (see `OPEN-ISSUES.md`).
-Onboarding already degrades gracefully when the model is missing, so this isn't a blocker.
+The whole find loop already degrades gracefully when the model is missing (verified live),
+so this isn't a blocker for M5 code.
 
 ## Completed
 
@@ -48,10 +52,19 @@ Onboarding already degrades gracefully when the model is missing, so this isn't 
   - step 2 photos — upload → `extract_surfaces` → prune → persist (commit: `0944bba`)
   - step 3 loss interview — items + seeded priors + done page + e2e flow test (commit: `55a2420`)
   - hardening — graceful fallback on any model failure, not just downtime (commit: `9478e4b`)
+- [x] **M4 — Search + find loop (web)** — the highest-leverage UX, wiring the M1 engine
+      (`first_pass_suggestion`/`rank_zones`/`apply_find`) and M2 edge tasks
+      (`parse_search_query`/`phrase_reason`) into a full loop. 31 new tests (web suite +
+      DB layer), all offline-capable. Built and pushed atomically:
+  - `db.py` find-loop access layer — searches/suggestions/finds/memory_log/timeline +
+    priors/failure-mode read-write, `Search` dataclass, ISO↔datetime (commit: `9c8361f`)
+  - step 1 — query box → `parse_search_query` → first-pass home suggestion (commit: `28e3875`)
+  - step 2 — reject home → retrace interview → `rank_zones` + phrased reasons (commit: `9ca273b`)
+  - step 3 — confirm / none-of-these → find + learning + acknowledgment (commit: `cf3d11c`)
+  - step 4 — next-app-open follow-up for open searches (commit: `f80aaab`)
 
 ## Next Up
 
-- [ ] **M4 — Search + find loop** (the highest-leverage UX)
 - [ ] **M5 — Quick dwell-log + stats view + full-wipe**
 - [ ] **M6 — Dogfood** until 5 real losses resolve with visible ranking improvement
 
@@ -70,6 +83,13 @@ Onboarding already degrades gracefully when the model is missing, so this isn't 
   engine's first-pass land on the home, and every step degrades to manual entry on model
   failure. Live boot: `python -m wwiw.main` → `/`, `/onboarding/rooms`, `/healthz` all 200,
   and a real parse against Ollama-with-no-models returns 200 (fallback), not 500.
+- M4: `tests/test_db_findloop.py` (16) — search/suggestion/find/memory/timeline writes incl.
+  append-only enforcement, and priors/failure-mode round-trips. `tests/web/test_find_*` (25):
+  query resolution + offline fallback, first-pass, the retrace→`rank_zones` ranking (dwell
+  order, failure-memory override, transit exclusion), confirm→learning, the **canonical
+  scenario** (two couch finds make the couch lead the next search), and the single follow-up.
+  Live boot smoke: real `create_app` (Ollama offline) drives query→reject→retrace→confirm
+  all 200 and the loop closes — graceful degradation with no model pulled.
 
 ## Notes / Decisions Log
 
@@ -121,3 +141,26 @@ _Structural facts only — never real goal/memory/residence content (privacy rul
   names persist (`source = photo|manual`). Onboarding writes added to `db.py` (the side-effect
   boundary); web glue maps parsed names → ids. Dynamic form lists posted as repeated keys and
   read with `form.getlist` aligned by DOM order (clear a name to drop a row).
+- 2026-06-20: M4 timeline reconstruction — the retrace interview synthesizes the user's
+  ticked rooms + coarse dwell into **contiguous `DwellEntry` intervals** across `[anchor, now]`,
+  appends them to `dwell_entries` (`source=retrospective`), then ranks by reading the **whole
+  timeline** back through the engine's own windowing. This unifies the hybrid stub's two halves
+  through the sacred interface — quick-logged dwells (M5) will feed the same read path for free.
+  When no anchor is parsed, retrace starts at a fixed look-back (absolute clock barely matters;
+  ranking turns on *which* zones and relative dwell).
+- 2026-06-20: M4 rejection pass wiring — `rank_zones` is called with the home zone **excluded**
+  (the user just ruled it out), `claimed_zone_id = home` (so adjacency residual lands on home's
+  neighbours), and `plausible_zone_ids = dwell zones` so a **transit** space (hallway) can never
+  float up via the adjacency floor. Only the **top** suggestion carries a surface hint; each
+  zone's reason is grounded in one deterministic fact and worded by `phrase_reason`, with a warm
+  fallback when the model is offline *or returns empty*.
+- 2026-06-20: M4 metric semantics — DB suggestion ranks **continue after** the first-pass home
+  check (home = 1, retrace = 2..K+1), so `finds.was_suggested_rank` and `places_checked`
+  (`count_rejected_suggestions + 1`) form one monotone rank-of-actual signal for M5's stats.
+- 2026-06-20: M4 learning on confirm — `apply_find` shifts the home prior toward where the item
+  actually was (so repeated away finds eventually make that spot lead the first pass — the
+  canonical scenario, tested e2e) and bumps failure-mode memory only on an away-from-home find;
+  `observe_claim` writes the **silent** memory_log (never surfaced). "None of these" free text
+  resolves to a known room or **grows a new zone** so the loop always closes. Append-only:
+  `finds`/`memory_log` reject UPDATE+DELETE; a search advances `open→found|expired` and is
+  marked `followed_up` so the single next-app-open nudge asks **once**.

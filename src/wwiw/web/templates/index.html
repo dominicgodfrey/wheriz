@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Where Was I When{% endblock %}
+{% block content %}
+  <h1>Where was I when…?</h1>
+  <p class="muted">
+    A gentle helper for the things that wander off. It learns your home and your habits,
+    then makes its best <em>suggestions</em> about where something might be — never
+    certainties, just good places to look.
+  </p>
+
+  <div class="card">
+    {% if zone_count == 0 %}
+      <h2>Let's get set up</h2>
+      <p>First we'll map your home, then note a few things you tend to misplace.
+        Takes a couple of minutes, and you can edit everything afterward.</p>
+      <p><a class="btn" href="/onboarding/rooms">Start setup</a></p>
+    {% else %}
+      <h2>You're set up</h2>
+      <p class="muted">{{ zone_count }} room{{ '' if zone_count == 1 else 's' }} mapped,
+        {{ item_count }} item{{ '' if item_count == 1 else 's' }} tracked.</p>
+      <p class="row">
+        <a class="btn" href="/onboarding/rooms">Review setup</a>
+      </p>
+    {% endif %}
+  </div>
+{% endblock %}

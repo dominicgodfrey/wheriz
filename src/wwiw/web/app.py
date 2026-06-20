@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import db
 from ..llm.client import LLMClient, OllamaClient
-from . import find, onboarding
+from . import find, log, onboarding
 from .deps import get_conn, get_llm, get_templates
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -59,6 +59,7 @@ def create_app(
 
     app.include_router(onboarding.router)
     app.include_router(find.router)
+    app.include_router(log.router)
     return app
 
 

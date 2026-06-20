@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Log where you've been{% endblock %}
+{% block content %}
+  <h1>Where have you been?</h1>
+  <p class="muted">Drop a quick note when you settle somewhere. It's never required — the
+    finder can also retrace after the fact — but the more it knows about your day, the
+    better its first guess when something wanders off.</p>
+
+  {% if logged %}
+    <div class="notice" style="background:#eef4ec;border-color:#cfe0c8;color:#3f6b3a">
+      Logged: <strong>{{ logged.zone }}</strong>, {{ logged.duration }}. Noted for later.
+    </div>
+  {% endif %}
+  {% if error %}
+    <div class="notice">{{ error }}</div>
+  {% endif %}
+
+  {% if not zones %}
+    <div class="notice">No rooms mapped yet. <a href="/onboarding/rooms">Map your home
+      first →</a></div>
+  {% else %}
+  <form method="post" action="/log" class="card">
+    <label for="zone_id">Which room?</label>
+    <select id="zone_id" name="zone_id" autofocus>
+      {% for z in zones %}
+      <option value="{{ z.id }}">{{ z.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="dwell">For how long?</label>
+    <select id="dwell" name="dwell">
+      {% for key, label in durations %}
+      <option value="{{ key }}"{{ ' selected' if key == default_duration else '' }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <p><button class="btn" type="submit">Log it</button></p>
+  </form>
+
+  {% if recent %}
+  <h2>Recently logged</h2>
+  <ul class="items">
+    {% for r in recent %}
+    <li class="row" style="justify-content:space-between">
+      <span>{{ r.zone_name }}</span>
+      <span class="muted" style="font-size:.85rem">
+        {{ 'quick-logged' if r.source == 'quicklog' else 'retraced' }}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% endif %}
+
+  <p class="row" style="margin-top:18px">
+    <a class="btn secondary" href="/">Home</a>
+  </p>
+{% endblock %}

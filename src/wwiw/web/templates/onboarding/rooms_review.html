@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Setup · Review rooms{% endblock %}
+{% block content %}
+  <ul class="steps"><li class="done">1 · Rooms</li><li class="active">2 · Photos</li><li>3 · Things</li></ul>
+  <h1>Does this look right?</h1>
+
+  {% if offline %}
+    <div class="notice">The local model isn't running, so I just split your text into rooms,
+      one per line. Fix the names below, or start the model and try again for smarter parsing.</div>
+  {% else %}
+    <p class="muted">Here's how I read your description. Edit anything, <strong>clear a name to
+      drop a room</strong>, then save. Nothing has been stored yet.</p>
+  {% endif %}
+
+  {% if not zones %}
+    <div class="notice">I couldn't find any rooms in that. <a href="/onboarding/rooms">Try again →</a></div>
+  {% else %}
+  <form method="post" action="/onboarding/rooms/confirm">
+    <div class="card">
+      {% for z in zones %}
+      <div class="row">
+        <input type="text" name="zone_name" value="{{ z.name }}" aria-label="Room name">
+        <select name="zone_kind" aria-label="Room type">
+          <option value="dwell" {{ 'selected' if z.kind == 'dwell' }}>a room you spend time in</option>
+          <option value="transit" {{ 'selected' if z.kind == 'transit' }}>a pass-through (hall, stairs)</option>
+        </select>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if edges %}
+      <h2>Connections</h2>
+      <p class="muted">Doorways between rooms. Uncheck any that aren't right.</p>
+      <ul class="surfaces">
+        {% for a, b in edges %}
+        <li><label class="check">
+          <input type="checkbox" name="edge" value="{{ a }}||{{ b }}" checked>
+          {{ a }} ↔ {{ b }}
+        </label></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <p class="row">
+      <button class="btn" type="submit">Looks good — save rooms</button>
+      <a class="btn secondary" href="/onboarding/rooms">Start over</a>
+    </p>
+  </form>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Setup · Rooms{% endblock %}
+{% block content %}
+  <ul class="steps"><li class="active">1 · Rooms</li><li>2 · Photos</li><li>3 · Things</li></ul>
+  <h1>Describe your home</h1>
+  <p class="muted">In your own words — which rooms you have and how they connect. No need to
+    be precise; you'll get to review and fix everything on the next screen.</p>
+  <p class="muted"><em>For example:</em> "The front door opens into a hallway. Off the hallway
+    are the kitchen and the living room. The bedroom is at the end of the hall."</p>
+
+  {% if zone_count > 0 %}
+    <div class="notice">You've already mapped {{ zone_count }} room{{ '' if zone_count == 1 else 's' }}.
+      Describing more will add to them — or <a href="/onboarding/photos">skip ahead to photos →</a></div>
+  {% endif %}
+
+  <form method="post" action="/onboarding/rooms/parse">
+    <label for="description">Your home</label>
+    <textarea id="description" name="description" placeholder="The front door opens into…"></textarea>
+    <p><button class="btn" type="submit">Continue</button></p>
+  </form>
+{% endblock %}

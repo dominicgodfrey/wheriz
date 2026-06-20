@@ -26,3 +26,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+filterwarnings = [
+    # Starlette's TestClient warns it still uses httpx; not actionable here.
+    "ignore:Using .httpx. with .starlette:DeprecationWarning",
+]

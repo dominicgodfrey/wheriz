@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import db
 from ..llm.client import LLMClient, OllamaClient
+from . import onboarding
 from .deps import get_conn, get_llm, get_templates
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -52,6 +53,7 @@ def create_app(
         """Liveness + whether the local model is reachable (user-initiated check)."""
         return {"ok": True, "llm_available": llm.is_available()}
 
+    app.include_router(onboarding.router)
     return app
 
 

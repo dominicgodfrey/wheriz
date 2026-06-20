@@ -153,7 +153,10 @@ def connect(db_path: str | Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     """
     if db_path != ":memory:":
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    # check_same_thread=False: each request opens (and closes) its own connection, but the
+    # web framework may create it in a threadpool worker and use it on the event loop —
+    # never concurrently. Disabling the guard makes that handoff safe.
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     initialize(conn)

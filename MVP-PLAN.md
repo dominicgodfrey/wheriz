@@ -7,21 +7,19 @@
 
 ## Current Phase
 
-**M5 — Quick dwell-log + stats view + full-wipe** (next). M0–M4 complete.
+**M6 — Dogfood** (next). M0–M5 complete.
 
 ## Active Sub-Task
 
-None active. Next session: M5 — the hybrid stub's second half + instrumentation:
-(1) a minimal **quick dwell-log** page that appends `(zone, enter, exit, source=quicklog)`
-rows (the timeline read path + `add_dwell_entry` already exist; the find loop already reads
-the whole timeline, so quick-logged dwells will feed ranking for free);
-(2) a **stats view** trending rank-of-actual-location and places-checked over time (read
-from `finds.was_suggested_rank` / `finds.places_checked`); (3) a **full-wipe** affordance
-(delete `data/` — keep it out-of-app per the privacy rule, so likely just documented).
-**Runtime note:** Ollama server is running, but `ollama list` shows **no models pulled**
-yet — `ollama pull` the text/vision models before live dogfooding (see `OPEN-ISSUES.md`).
-The whole find loop already degrades gracefully when the model is missing (verified live),
-so this isn't a blocker for M5 code.
+None active. Next session: M6 — use it for real losses and fix friction until **five real
+loss events resolve with visible ranking improvement** on the stats view (the exit
+criterion). This is a usage/observation phase, not primarily a coding one: do real
+onboarding on the actual residence, then log/find for real and watch the `/stats` trend.
+**Blocker to clear first:** `ollama pull` the chosen text + vision models — the server is
+running but `ollama list` shows **no models pulled** (see `OPEN-ISSUES.md` #1). The whole
+app degrades gracefully with no model (every flow verified live at 200), so this only
+gates *quality* of parsing/phrasing, not function. M5's `/log` and `/stats` don't touch
+the LLM at all.
 
 ## Completed
 
@@ -62,10 +60,17 @@ so this isn't a blocker for M5 code.
   - step 2 — reject home → retrace interview → `rank_zones` + phrased reasons (commit: `9ca273b`)
   - step 3 — confirm / none-of-these → find + learning + acknowledgment (commit: `cf3d11c`)
   - step 4 — next-app-open follow-up for open searches (commit: `f80aaab`)
+- [x] **M5 — Quick dwell-log + stats view + full-wipe** — the hybrid stub's second half +
+      instrumentation + the documented reset. 20 new tests, all offline-capable; live-boot
+      smoke (real factory, Ollama offline) drives `/`, `/log`, `/log` POST, `/stats` all 200.
+      Built and pushed atomically:
+  - `db.py` reads — `recent_dwell_entries` (display-only) + `list_finds` (stats trend) (commit: `7eb3b90`)
+  - quick dwell-log page — `/log`: room + coarse duration → `(zone, enter, exit, quicklog)` (commit: `9975cc6`)
+  - stats view — `/stats`: pure `summarize_finds` trend of places-checked + rank (commit: `85517c1`)
+  - full-wipe — documented (CLAUDE.md) + quiet stats-page note, no in-app button (commit: `02ed385`)
 
 ## Next Up
 
-- [ ] **M5 — Quick dwell-log + stats view + full-wipe**
 - [ ] **M6 — Dogfood** until 5 real losses resolve with visible ranking improvement
 
 ## How to Verify Completed Work
@@ -90,6 +95,15 @@ so this isn't a blocker for M5 code.
   scenario** (two couch finds make the couch lead the next search), and the single follow-up.
   Live boot smoke: real `create_app` (Ollama offline) drives query→reject→retrace→confirm
   all 200 and the loop closes — graceful degradation with no model pulled.
+- M5: `tests/test_db_findloop.py` (+4) — `recent_dwell_entries` end-ordering/name+source/limit
+  and `list_finds` chronological-with-metrics / empty. `tests/web/test_log.py` (8): dwell-only
+  room list, onboarding redirect, a quick-log write lands a `quicklog` interval ending now,
+  longer dwell ⇒ longer span, missing room never writes, the recent panel echoes, and the
+  logged dwell is read back through `read_timeline` (source-agnostic). `tests/web/test_stats.py`
+  (10): pure `summarize_finds` (empty / too-few-for-trend / improving / slipping / steady / bar
+  scaling) + rendered page (empty state, improving copy, the wipe instruction is present, and
+  the memory-trust log is **never** surfaced). Live boot: real factory (Ollama offline) →
+  `/log` GET+POST and `/stats` all 200.
 
 ## Notes / Decisions Log
 
@@ -164,3 +178,23 @@ _Structural facts only — never real goal/memory/residence content (privacy rul
   resolves to a known room or **grows a new zone** so the loop always closes. Append-only:
   `finds`/`memory_log` reject UPDATE+DELETE; a search advances `open→found|expired` and is
   marked `followed_up` so the single next-app-open nudge asks **once**.
+- 2026-06-20: M5 quick dwell-log — `/log` writes through the **same** `add_dwell_entry` boundary
+  the retrace uses, tagged `source=quicklog`; the find loop reads the whole timeline, so a
+  proactively-logged stay feeds ranking with zero extra wiring and the engine never learns it was
+  hand-logged (the sacred interface holds). A stay is modelled as ending **now** reaching back by
+  a coarse duration (few min / little while / good while) — absolute clock barely matters to
+  ranking. Dwell zones only (transit holds nothing); a missing room re-asks, never writes junk.
+  `recent_dwell_entries` is display-only (carries `source` for a label) — the engine still reads
+  only `read_timeline`.
+- 2026-06-20: M5 stats — `/stats` trends the append-only find history; **places-checked** leads
+  (the "fewer places before finding" success criterion), with rank-of-actual annotated per find.
+  Trend = earlier-half vs recent-half mean, but only committed once there are **≥4 finds** (below
+  that it reads "still early" — honest cold-start, aligned with the 5-loss exit criterion).
+  `summarize_finds` is a **pure** DB-free roll-up so it's unit-tested without a browser. This page
+  is **reporting only** — it never feeds ranking and **never** surfaces the silent memory-trust
+  log (pinned by a test).
+- 2026-06-20: M5 full-wipe — the only reset is deleting `data/`, kept **out-of-app** by design
+  (finds/searches are append-only → no in-app destructive button, consistent with the privacy
+  stance). Documented in `CLAUDE.md` (PowerShell + POSIX command) and surfaced as a quiet note on
+  the stats page (where the user sees the data held about them); a test pins the instruction so
+  the affordance can't silently vanish. Next launch recreates an empty `data/`.

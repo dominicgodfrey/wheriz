@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Setup complete{% endblock %}
+{% block content %}
+  <ul class="steps"><li class="done">1 · Rooms</li><li class="done">2 · Photos</li><li class="done">3 · Things</li></ul>
+  <h1>You're all set</h1>
+  <p class="muted">{{ zone_count }} room{{ '' if zone_count == 1 else 's' }} mapped,
+    {{ item_count }} thing{{ '' if item_count == 1 else 's' }} on the watch list.</p>
+
+  <div class="card">
+    <p>When something goes missing, tell me what and roughly when you last had it. I'll walk
+      back through where you've been and suggest a few good places to look — gentle hunches,
+      never certainties — then learn from where it actually turns up.</p>
+    <p class="row">
+      <a class="btn" href="/">Go to home</a>
+      <a class="btn secondary" href="/onboarding/items">Add more things</a>
+    </p>
+  </div>
+{% endblock %}

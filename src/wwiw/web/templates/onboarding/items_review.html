@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Setup · Review things{% endblock %}
+{% block content %}
+  <ul class="steps"><li class="done">1 · Rooms</li><li class="done">2 · Photos</li><li class="active">3 · Things</li></ul>
+  <h1>Your things</h1>
+
+  {% if offline %}
+    <div class="notice">The local model isn't running, so I just listed what you typed.
+      Pick where each usually lives, then save.</div>
+  {% else %}
+    <p class="muted">Here's what I gathered. Fix any names, set where each usually lives,
+      <strong>clear a name to drop it</strong>, then save. The "usually lives" spot is just a
+      starting hunch — I'll learn the real one over time.</p>
+  {% endif %}
+
+  {% if not rows %}
+    <div class="notice">I didn't catch any items. <a href="/onboarding/items">Try again →</a></div>
+  {% else %}
+  <form method="post" action="/onboarding/items/confirm">
+    {% for row in rows %}
+    <div class="card">
+      <div class="row">
+        <input type="text" name="item_name" value="{{ row.name }}" aria-label="Item">
+        <select name="item_home" aria-label="Usually lives in">
+          <option value="">— not sure —</option>
+          {% for z in zones %}
+          <option value="{{ z.id }}" {{ 'selected' if z.id == row.home_id }}>{{ z.name }}</option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="item_confidence" value="{{ row.confidence }}">
+      </div>
+    </div>
+    {% endfor %}
+    <p class="row">
+      <button class="btn" type="submit">Save things</button>
+      <a class="btn secondary" href="/onboarding/items">Start over</a>
+    </p>
+  </form>
+  {% endif %}
+{% endblock %}

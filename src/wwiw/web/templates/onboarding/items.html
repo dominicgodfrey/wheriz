@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Setup · Things{% endblock %}
+{% block content %}
+  <ul class="steps"><li class="done">1 · Rooms</li><li class="done">2 · Photos</li><li class="active">3 · Things</li></ul>
+  <h1>What tends to go missing?</h1>
+  <p class="muted">A few quick questions. Three to five things is plenty to start — you can
+    add more later, and I'll learn the real spots from where they actually turn up.</p>
+
+  {% if zone_count == 0 %}
+    <div class="notice">You haven't mapped any rooms yet, so I can't note where things live.
+      <a href="/onboarding/rooms">Map your rooms first →</a></div>
+  {% endif %}
+
+  <form method="post" action="/onboarding/items/parse">
+    <label for="q1">Which things do you misplace most often?</label>
+    <textarea id="q1" name="q1" placeholder="keys, wallet, phone, glasses…"></textarea>
+
+    <label for="q2">Where does each usually live?</label>
+    <textarea id="q2" name="q2" placeholder="keys on the kitchen counter, wallet by the front door…"></textarea>
+
+    <label for="q3">Anywhere they often end up instead?</label>
+    <textarea id="q3" name="q3" placeholder="phone on the couch, glasses on the nightstand…"></textarea>
+
+    <p><button class="btn" type="submit">Continue</button></p>
+  </form>
+{% endblock %}

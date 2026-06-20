@@ -14,7 +14,14 @@ from fastapi.templating import Jinja2Templates
 
 from .. import db
 from ..llm.client import LLMClient
-from ..llm.tasks import ParsedResidence, ParsedZone, extract_surfaces, parse_residence
+from ..llm.tasks import (
+    ParsedItem,
+    ParsedResidence,
+    ParsedZone,
+    extract_surfaces,
+    parse_loss_interview,
+    parse_residence,
+)
 from .deps import get_conn, get_llm, get_templates
 
 router = APIRouter(prefix="/onboarding")
@@ -158,3 +165,105 @@ async def photos_save(zone_id: str, request: Request, conn=Depends(get_conn)):
         _add(line, "manual")
 
     return RedirectResponse("/onboarding/photos", status_code=303)
+
+
+# --- Loss interview -> items + seeded priors ----------------------------------
+
+
+def _combine_answers(q1: str, q2: str, q3: str) -> str:
+    """Fold the three interview questions into one block for the parser."""
+    parts = [
+        f"Things often misplaced: {q1.strip()}" if q1.strip() else "",
+        f"Where they usually live: {q2.strip()}" if q2.strip() else "",
+        f"Where they often end up instead: {q3.strip()}" if q3.strip() else "",
+    ]
+    return "\n".join(p for p in parts if p)
+
+
+def _offline_items(q1: str) -> list[ParsedItem]:
+    """No model: split the 'often misplaced' answer into bare items, no home guess."""
+    raw = q1.replace(",", "\n")
+    return [ParsedItem(name=line.strip()) for line in raw.splitlines() if line.strip()]
+
+
+@router.get("/items", response_class=HTMLResponse)
+def items_form(
+    request: Request,
+    conn=Depends(get_conn),
+    templates: Jinja2Templates = Depends(get_templates),
+):
+    """Step 3: a short interview about the things that go missing."""
+    return templates.TemplateResponse(
+        request, "onboarding/items.html", {"zone_count": db.count_zones(conn)}
+    )
+
+
+@router.post("/items/parse", response_class=HTMLResponse)
+def items_parse(
+    request: Request,
+    q1: str = Form(""),
+    q2: str = Form(""),
+    q3: str = Form(""),
+    conn=Depends(get_conn),
+    llm: LLMClient = Depends(get_llm),
+    templates: Jinja2Templates = Depends(get_templates),
+):
+    """Parse the answers into reviewable items + home guesses (nothing saved yet)."""
+    zones = db.list_zones(conn)
+    available = llm.is_available()
+    if available:
+        parsed = parse_loss_interview(llm, _combine_answers(q1, q2, q3), [z.name for z in zones])
+    else:
+        parsed = _offline_items(q1)
+
+    rows = []
+    for item in parsed:
+        home = db.get_zone_by_name(conn, item.home_zone) if item.home_zone else None
+        rows.append(
+            {"name": item.name, "home_id": home.id if home else "", "confidence": item.confidence}
+        )
+    return templates.TemplateResponse(
+        request,
+        "onboarding/items_review.html",
+        {"rows": rows, "zones": zones, "offline": not available},
+    )
+
+
+@router.post("/items/confirm")
+async def items_confirm(request: Request, conn=Depends(get_conn)):
+    """Persist confirmed items and seed each home prior from its confidence."""
+    form = await request.form()
+    names = form.getlist("item_name")
+    homes = form.getlist("item_home")
+    confidences = form.getlist("item_confidence")
+
+    for name, home, confidence in zip(names, homes, confidences):
+        name = str(name).strip()
+        if not name:  # cleared = dropped
+            continue
+        home_id = str(home) or None
+        if home_id and db.get_zone(conn, home_id) is None:  # stale/invalid selection
+            home_id = None
+        item_id = db.create_item(conn, name, home_zone_id=home_id)
+        if home_id:
+            try:
+                weight = float(confidence)
+            except (TypeError, ValueError):
+                weight = 0.5
+            db.set_prior(conn, item_id, home_id, weight)
+
+    return RedirectResponse("/onboarding/done", status_code=303)
+
+
+@router.get("/done", response_class=HTMLResponse)
+def done(
+    request: Request,
+    conn=Depends(get_conn),
+    templates: Jinja2Templates = Depends(get_templates),
+):
+    """Wrap-up: a warm summary of what was set up."""
+    return templates.TemplateResponse(
+        request,
+        "onboarding/done.html",
+        {"zone_count": db.count_zones(conn), "item_count": db.count_items(conn)},
+    )

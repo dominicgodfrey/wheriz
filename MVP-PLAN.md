@@ -7,16 +7,17 @@
 
 ## Current Phase
 
-**M3 — Onboarding wizard** (next). M0–M2 complete.
+**M4 — Search + find loop** (next). M0–M3 complete.
 
 ## Active Sub-Task
 
-None active. Next session: M3 — web onboarding (rooms → photos → loss interview), wiring
-the M2 parse/phrase tasks into FastAPI + Jinja. **Runtime gate before M3 can be exercised
-live:** Ollama is installed (binary present) but the server was not running and the text
-(`qwen3:8b` class) + vision (`qwen2.5vl:7b` class) models are not confirmed pulled — start
-`ollama serve` and `ollama pull` both before dogfooding onboarding. The M2 code already
-gates on `OllamaClient.is_available()`, and all engine/LLM tests run without a live model.
+None active. Next session: M4 — the find loop (highest-leverage UX): query box + anchor →
+retrospective timeline interview ("where have you been since?") → ranked tappable
+suggestions (engine `rank_zones` + `phrase_reason`) → one-tap confirm / "none of these" +
+free text → learning update + acknowledgment; next-app-open follow-up for open searches.
+**Runtime note:** Ollama server is now running, but `ollama list` shows **no models pulled**
+yet — `ollama pull` the text/vision models before live dogfooding (see `OPEN-ISSUES.md`).
+Onboarding already degrades gracefully when the model is missing, so this isn't a blocker.
 
 ## Completed
 
@@ -37,10 +38,19 @@ gates on `OllamaClient.is_available()`, and all engine/LLM tests run without a l
   - `llm/client.py` — Ollama HTTP client, injectable transport, sanitized call logging (commit: `eb70a5d`)
   - `llm/prompts.py` + `prompts/*.txt` — one template per task, `string.Template` loader (commit: `6b5dfda`)
   - `llm/tasks.py` — the five parse/phrase tasks + JSON/anchor-time parsing (commit: `6159999`)
+- [x] **M3 — Onboarding wizard (web)** — FastAPI + Jinja wizard (rooms → photos → loss
+      interview), wiring the M2 tasks; persists to the M1 schema. 39 new tests (web suite
+      uses a temp DB + fake model, never Ollama). Built and pushed atomically:
+  - `OPEN-ISSUES.md` — issue tracker; opening item is model selection (commit: `1eac66a`)
+  - `db.py` access layer — zones/edges/surfaces/items/priors + row→dataclass reads (commit: `a411c81`)
+  - `web/` skeleton — `create_app` factory, deps, base layout, landing, `main.py` (commit: `655509a`)
+  - step 1 rooms — NL → `parse_residence` → review → persist (commit: `d70ca58`)
+  - step 2 photos — upload → `extract_surfaces` → prune → persist (commit: `0944bba`)
+  - step 3 loss interview — items + seeded priors + done page + e2e flow test (commit: `55a2420`)
+  - hardening — graceful fallback on any model failure, not just downtime (commit: `9478e4b`)
 
 ## Next Up
 
-- [ ] **M3 — Onboarding wizard** (rooms → photos → loss interview)
 - [ ] **M4 — Search + find loop** (the highest-leverage UX)
 - [ ] **M5 — Quick dwell-log + stats view + full-wipe**
 - [ ] **M6 — Dogfood** until 5 real losses resolve with visible ranking improvement
@@ -55,6 +65,11 @@ gates on `OllamaClient.is_available()`, and all engine/LLM tests run without a l
   sanitized logging (image bytes never logged raw), prompt loader (every template renders,
   no leftover `$placeholder`), and the five tasks against recorded synthetic outputs
   (fenced/prose JSON, clamped confidence, trailing-`Z` and unparseable anchor times).
+- M3: `python -m pytest tests/web` (24) + `tests/test_db_access.py` (13) — wizard steps
+  parse→review→persist, end-to-end flow leaves a consistent DB whose seeded prior makes the
+  engine's first-pass land on the home, and every step degrades to manual entry on model
+  failure. Live boot: `python -m wwiw.main` → `/`, `/onboarding/rooms`, `/healthz` all 200,
+  and a real parse against Ollama-with-no-models returns 200 (fallback), not 500.
 
 ## Notes / Decisions Log
 
@@ -90,6 +105,19 @@ _Structural facts only — never real goal/memory/residence content (privacy rul
   confirm/edit before persistence. JSON extraction tolerates code fences + surrounding
   prose; anchor-time parsing tolerates trailing `Z` and degrades to `None` (never raises on
   a vague time). The LLM still never ranks — `phrase_reason` only words an engine decision.
-- 2026-06-20: Ollama runtime status — binary installed; server was **not running** at check
-  time and model pulls unconfirmed. Deferred to M3 startup (needs `ollama serve` + `ollama
-  pull` of the text/vision models). Not a code blocker: M2 gates on `is_available()`.
+- 2026-06-20: Ollama runtime status — binary installed; the **server is now running**
+  (`/api/tags` answers) but `ollama list` shows **no models pulled** — `ollama pull` the
+  text/vision models before live dogfooding (tracked in `OPEN-ISSUES.md`).
+- 2026-06-20: M3 web layer — `create_app(db_path, llm_client)` factory so tests inject a
+  temp DB + fake model (web suite never opens a socket to Ollama). SQLite opens with
+  `check_same_thread=False` (per-request connection, never shared concurrently) to survive
+  FastAPI's threadpool handoff. Starlette ≥1.3 `TemplateResponse(request, name, context)`
+  signature is required — the old `(name, {"request": ...})` form crashes the template cache.
+- 2026-06-20: M3 onboarding contract — every step is **parse → review/edit → confirm**; the
+  LLM only proposes, the user confirms before anything persists. `is_available()` proves only
+  that the server answered, so each parse step also catches `LLMError` and **falls back** to
+  manual/line-split entry (verified live against Ollama-with-no-models). Room photos are read
+  in memory for surface extraction and **never written to disk** (privacy); only surface
+  names persist (`source = photo|manual`). Onboarding writes added to `db.py` (the side-effect
+  boundary); web glue maps parsed names → ids. Dynamic form lists posted as repeated keys and
+  read with `form.getlist` aligned by DOM order (clear a name to drop a row).

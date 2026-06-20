@@ -14,8 +14,12 @@ would close it. Resolved items move to the plan's notes log and are deleted here
 are placeholders from the M0 spec, not a confirmed choice.
 
 **Why it's open.**
-- The Ollama binary is installed, but at last check the server was not running and no
-  model pulls were confirmed (`ollama list` returned nothing reachable).
+- The Ollama binary is installed and (as of 2026-06-20) the **server is running** —
+  `GET /api/tags` answers — but `models: []`: **no models are pulled yet**. So the next
+  concrete action is simply `ollama pull` of the chosen text + vision models.
+- Note the nuance, now handled in code: `is_available()` only confirms the *server*
+  answered, not that a usable model exists. Onboarding catches `LLMError` and degrades to
+  manual entry, so a missing model no longer 500s — but live parsing still needs a pull.
 - The target machine has an RTX 5060 Ti (16 GB VRAM). Both models must co-resident or
   swap cleanly within that budget; the 8B text + 7B vision pair should fit, but this is
   unverified against real latency on the find-loop and onboarding flows.
@@ -24,7 +28,7 @@ are placeholders from the M0 spec, not a confirmed choice.
   reasons better or parse JSON more reliably.
 
 **What would close it.**
-1. `ollama serve` running; `ollama pull` the chosen text + vision models.
+1. ~~`ollama serve` running~~ (done); `ollama pull` the chosen text + vision models.
 2. Confirm both load within 16 GB and respond at acceptable latency.
 3. Spot-check each of the five tasks against real (non-synthetic) onboarding input.
 4. Record the final model ids in `OllamaConfig` defaults and note the choice in the

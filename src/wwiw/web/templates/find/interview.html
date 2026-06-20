@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Retracing your {{ item.name }}{% endblock %}
+{% block content %}
+  <h1>Where have you been?</h1>
+  <p class="muted">Since {% if anchor %}<em>{{ anchor }}</em>{% else %}you last had your
+    {{ item.name }}{% endif %}, which rooms have you spent time in? Tick the ones you
+    remember and roughly how long — it helps me weigh where to look.</p>
+
+  {% if needs_pick %}
+    <div class="notice">Pick at least one room so I have somewhere to start.</div>
+  {% endif %}
+
+  {% if not zones %}
+    <div class="notice">There aren't any other rooms to retrace through.
+      <a href="/find">Start a new search →</a></div>
+  {% else %}
+  <form method="post" action="/find/{{ search_id }}/timeline">
+    {% for z in zones %}
+    <div class="card">
+      <div class="row">
+        <label class="check" style="margin:0">
+          <input type="checkbox" name="zone" value="{{ z.id }}"> {{ z.name }}
+        </label>
+        <select name="dwell_{{ z.id }}" aria-label="How long in {{ z.name }}">
+          <option value="brief">just passed through</option>
+          <option value="while" selected>a little while</option>
+          <option value="long">a good while</option>
+        </select>
+      </div>
+    </div>
+    {% endfor %}
+    <p class="row">
+      <button class="btn" type="submit">Show me where to look</button>
+      <a class="btn secondary" href="/find">Cancel</a>
+    </p>
+  </form>
+  {% endif %}
+{% endblock %}

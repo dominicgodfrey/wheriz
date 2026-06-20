@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Where your {{ item.name }} might be{% endblock %}
+{% block content %}
+  <h1>A few good places to look</h1>
+
+  {% if not rows %}
+    <div class="notice">I couldn't narrow it down from those rooms. You can
+      <a href="/find">try again</a> with more places, or just tell me where it turns up.</div>
+  {% else %}
+    <p class="muted">Gentle hunches, most likely first — not certainties. Tap the one where
+      you find your {{ item.name }}.</p>
+
+    {% for row in rows %}
+    <div class="card">
+      <p style="margin-top:0">{{ row.reason }}</p>
+      <form method="post" action="/find/{{ search_id }}/confirm">
+        <input type="hidden" name="zone_id" value="{{ row.zone.id }}">
+        <input type="hidden" name="was_suggested_rank" value="{{ row.rank }}">
+        {% if row.surface %}<input type="hidden" name="surface_hint" value="{{ row.surface }}">{% endif %}
+        <button class="btn" type="submit">Found it in the {{ row.zone.name }}</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card">
+    <h2 style="margin-top:0">None of these?</h2>
+    <p class="muted">Tell me where it actually was and I'll remember for next time.</p>
+    <form method="post" action="/find/{{ search_id }}/confirm" class="row">
+      <input type="text" name="other_zone" placeholder="e.g. the car, the bathroom"
+             aria-label="Where it actually was">
+      <button class="btn secondary" type="submit">That's where it was</button>
+    </form>
+  </div>
+{% endblock %}

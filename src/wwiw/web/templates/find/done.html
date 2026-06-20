@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Found your {{ item.name }}{% endblock %}
+{% block content %}
+  <h1>Found it 🎉</h1>
+  <div class="card">
+    <p>Your <strong>{{ item.name }}</strong> was in the <strong>{{ zone.name }}</strong>{% if surface %},
+      on the {{ surface }}{% endif %}.</p>
+
+    {% if not away %}
+      <p class="muted">Right where it usually lives — good. I'll keep that as its home spot.</p>
+    {% elif leads_now %}
+      <p class="muted">Noted. The {{ zone.name }} is becoming this thing's regular haunt, so
+        I'll suggest there first next time.</p>
+    {% else %}
+      <p class="muted">I'll remember the {{ item.name }} can end up in the {{ zone.name }}, and
+        weigh it sooner if it wanders off again.</p>
+    {% endif %}
+
+    <p class="row">
+      <a class="btn" href="/find">Find something else</a>
+      <a class="btn secondary" href="/">Home</a>
+    </p>
+  </div>
+{% endblock %}

@@ -17,6 +17,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import db
+from ..engine.learning import apply_find
+from ..engine.memory import observe_claim
 from ..engine.scoring import first_pass_suggestion, rank_zones
 from ..engine.types import DwellEntry, ScoredZone
 from ..llm.client import LLMClient, LLMError
@@ -405,6 +407,126 @@ def _render_suggestions(
         request,
         "find/suggestions.html",
         {"search_id": search_id, "item": item, "rows": rows},
+    )
+
+
+# --- confirm a find -> learning + acknowledgment ------------------------------
+
+
+def _resolve_or_create_zone(conn, name: str) -> str | None:
+    """Match a free-text place to a zone, creating a new dwell zone if it's genuinely new.
+
+    The "none of these" path must always be closeable: if the item turned up somewhere the
+    home map doesn't know yet, the home simply grew a room.
+    """
+    name = name.strip()
+    if not name:
+        return None
+    existing = db.get_zone_by_name(conn, name)
+    if existing is not None:
+        return existing.id
+    return db.create_zone(conn, name)
+
+
+@router.post("/{search_id}/confirm", response_class=HTMLResponse)
+async def confirm_find(
+    search_id: int,
+    request: Request,
+    conn=Depends(get_conn),
+    templates: Jinja2Templates = Depends(get_templates),
+):
+    """Record where the item turned up, learn from it, and acknowledge warmly.
+
+    Handles all three entry points — a tapped suggestion, the first-pass "found it in the
+    usual spot", and "none of these" free text — uniformly: one append-only find, one
+    learning update (home prior + failure mode), one silent claimed-vs-actual record.
+    """
+    search = db.get_search(conn, search_id)
+    if search is None:
+        return RedirectResponse("/find", status_code=303)
+    item = db.get_item(conn, search.item_id)
+    if item is None or search.status != "open":
+        # Nothing to learn from (already resolved, or a vanished item) — don't double-record.
+        return RedirectResponse("/", status_code=303)
+
+    form = await request.form()
+    other_zone = str(form.get("other_zone", "")).strip()
+    if other_zone:
+        found_zone_id = _resolve_or_create_zone(conn, other_zone)
+    else:
+        zid = str(form.get("zone_id", "")).strip()
+        found_zone_id = zid if zid and db.get_zone(conn, zid) else None
+    if found_zone_id is None:
+        return RedirectResponse(f"/find/{search_id}/reject-home", status_code=303)
+
+    # The suggestion the user tapped (if any) carries the authoritative rank + surface.
+    match = next(
+        (
+            s
+            for s in db.list_suggestions(conn, search_id)
+            if s["zone_id"] == found_zone_id and not s["rejected"]
+        ),
+        None,
+    )
+    was_rank = match["rank"] if match else None
+    surface_id = match["surface_id"] if match else None
+    places_checked = db.count_rejected_suggestions(conn, search_id) + 1
+
+    now = datetime.now()
+    db.record_find(
+        conn,
+        search_id,
+        found_zone_id,
+        surface_id=surface_id,
+        was_suggested_rank=was_rank,
+        places_checked=places_checked,
+        now=now,
+    )
+
+    # Learning: shift the home prior toward where it actually was; record an away-from-home
+    # find in failure-mode memory (a home find leaves that memory untouched).
+    away = item.home_zone_id is None or found_zone_id != item.home_zone_id
+    priors = db.read_priors(conn, item.id)
+    failure_modes = db.read_failure_modes(conn, item.id)
+    new_priors, new_failure_modes = apply_find(
+        priors, failure_modes, found_zone_id, item.home_zone_id
+    )
+    db.write_priors(conn, item.id, new_priors)
+    db.write_failure_modes(
+        conn, item.id, new_failure_modes, bumped_zone_id=found_zone_id if away else None
+    )
+
+    # Silent memory-trust log — claimed (the usual spot they'd expect) vs actual. Never shown.
+    obs = observe_claim(
+        actual_zone_id=found_zone_id,
+        actual_time=now,
+        claimed_zone_id=item.home_zone_id,
+        claimed_time=search.anchor_time,
+    )
+    db.log_memory(
+        conn,
+        search_id,
+        claimed_anchor=item.home_zone_id,
+        actual_outcome=f"{found_zone_id}|matched={obs.location_matched}",
+        now=now,
+    )
+
+    db.set_search_status(conn, search_id, "found")
+
+    found_zone = db.get_zone(conn, found_zone_id)
+    surface = db.get_surface(conn, surface_id).name if surface_id else None
+    # Will this place now lead the next search? (Did the prior tip toward it.)
+    leads_now = bool(new_priors) and max(sorted(new_priors), key=new_priors.get) == found_zone_id
+    return templates.TemplateResponse(
+        request,
+        "find/done.html",
+        {
+            "item": item,
+            "zone": found_zone,
+            "surface": surface,
+            "away": away,
+            "leads_now": leads_now,
+        },
     )
 
 

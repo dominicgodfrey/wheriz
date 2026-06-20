@@ -1,6 +1,12 @@
 # Where-Was-I-When (wwiw)
 
-An ambient item-finding system. Stage 0 MVP: full reasoning engine, onboarding, find-loop UX, and learning — with the occupancy timeline stubbed (retrospective reconstruction + optional quick dwell-log). Full concept: `item-finder-project-plan.md`. Implementation plan decisions: see the approved MVP plan (deterministic scoring, LLM at edges only, zones score / surfaces decorate).
+An ambient item-finding system. Stage 0 MVP: full reasoning engine, onboarding, find-loop UX, and learning — with the occupancy timeline stubbed (retrospective reconstruction + optional quick dwell-log).
+
+- **Design reference** (decisions, architecture, data model, scoring spec): `MVP.md`
+- **Living progress tracker** (current phase, what's done, what's next): `MVP-PLAN.md` — read at session start, update before session end
+- **Full product concept**: `item-finder-project-plan.md`
+
+Core stance: deterministic scoring, LLM at the edges only, zones score / surfaces decorate.
 
 ## Stack
 

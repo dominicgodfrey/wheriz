@@ -7,32 +7,28 @@
 
 ## Current Phase
 
-**M1 — Schema + engine core.**
+**M2 — LLM edge layer** (next). M1 complete.
 
 ## Active Sub-Task
 
-Building the deterministic engine core (`engine/`) as pure functions with synthetic-fixture
-pytest coverage, then the SQLite schema. Keystone deliverable: the 5-synthetic-loss test
-where rank-of-actual demonstrably improves.
+None active. Next session: M2 — Ollama client + the five parse/phrase prompt tasks + call
+logging. Note from M0: Ollama install / model pull still unverified in-repo; that gate
+belongs to M2 startup (machine has RTX 5060 Ti 16GB).
 
 ## Completed
 
 - [x] **M0 — Environment & repo** (commit: `06acc3f`) — `git init`, `.gitignore` (excludes `data/`
       entirely), `pyproject.toml` (FastAPI/uvicorn/jinja2/httpx; pytest dev), project `CLAUDE.md`
-      with privacy rules, package stubs (`src/wwiw/__init__.py`, `src/wwiw/engine/__init__.py`).
+      with privacy rules, package stubs.
       _Ollama install / model pull not verified in-repo (machine has RTX 5060 Ti 16GB)._
-
-## In Progress
-
-- [ ] **M1 — Schema + engine core**
-      Status: starting. Building in atomic, pushed-per-change increments:
-        1. engine `types.py` (domain dataclasses)
-        2. engine `memory.py` (anchor widening + claimed-vs-actual observation)
-        3. engine `scoring.py` (deterministic zone ranking)
-        4. engine `learning.py` (prior + failure-mode updates)
-        5. keystone integration test (5 losses, ranking improves)
-        6. `db.py` (SQLite schema + access; append-only finds/searches)
-      Blockers: none.
+- [x] **M1 — Schema + engine core** — deterministic core as pure functions + SQLite schema,
+      56 passing tests, no live-LLM dependency. Built and pushed in atomic increments:
+  - `engine/types.py` — domain dataclasses (commit: `40786e2`)
+  - `engine/memory.py` — anchor widening + silent claimed-vs-actual (commit: `72cb141`)
+  - `engine/scoring.py` — deterministic zone ranking (commit: `35ca350`)
+  - `engine/learning.py` — prior + failure-mode updates (commit: `744d058`)
+  - keystone test — rank-of-actual improves `[3,3,2,2,1]` over 5 losses (commit: `3db1bbe`)
+  - `db.py` — SQLite schema, append-only finds/memory_log + no-delete searches (commit: `884617d`)
 
 ## Next Up
 
@@ -45,9 +41,9 @@ where rank-of-actual demonstrably improves.
 ## How to Verify Completed Work
 
 - M0: repo builds (`pip install -e .[dev]`); `git status` clean of `data/`.
-- M1 (as it lands): `python -m pytest` — engine invariants (scores normalized, negative-space
-  zones never suggested, ranking-improves-over-5-losses test) and schema invariants
-  (append-only finds, FK integrity).
+- M1: `python -m pytest` (56 tests) — engine invariants (scores normalized, negative-space
+  zones never suggested, `test_ranking_improves.py` 5-loss test) and schema invariants
+  (`test_db.py`: append-only finds/memory_log, no-delete searches, FK + CHECK integrity).
 
 ## Notes / Decisions Log
 
@@ -59,3 +55,15 @@ _Structural facts only — never real goal/memory/residence content (privacy rul
 - 2026-06-19: M1 engine modules are **pure** (no DB/LLM imports) per the "deterministic core"
   rule; they operate on `engine/types.py` dataclasses. `db.py` is the only side-effect boundary.
   M1 development proceeds as atomic commits, each tested and pushed to origin/main.
+- 2026-06-19: Scoring model — rejection-pass score `∝ (failure_weight + smoothing) ×
+  normalized_dwell + adjacency_residual`, normalized over the kept (≤ `max_candidates`)
+  candidates. Laplace `failure_smoothing` keeps cold-start dwelled zones rankable; adjacency
+  residual is a small flat floor so a never-dwelled neighbor of the claimed zone can still
+  surface (the one deliberate exception to negative-space pruning).
+- 2026-06-19: Learning — home prior is a self-normalizing decaying average (sum stays 1.0);
+  failure-mode memory only updates on an **away-from-home** find (home finds leave it
+  untouched), so the failure signal isn't eroded by ordinary successful checks.
+- 2026-06-19: Append-only interpretation — `finds` and `memory_log` reject UPDATE+DELETE;
+  `searches` reject DELETE only (status `open→found→expired` and `followed_up` may advance).
+  Enforced via SQLite triggers, surfacing as `sqlite3.IntegrityError`. Full wipe = delete
+  `data/`; no in-app destructive reset.

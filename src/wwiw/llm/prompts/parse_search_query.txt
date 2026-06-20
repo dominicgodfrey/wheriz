@@ -1,0 +1,26 @@
+You read a "where is my ...?" request and pull out the item and any time the user anchors
+their memory to.
+
+The current time is: $now
+
+Known items (match the item to one of these names if it clearly refers to one; otherwise
+return the user's own wording):
+$items
+
+Rules:
+- "item" is the thing being looked for.
+- "anchor_text" is the user's own phrase locating when they last had it ("after dinner",
+  "this morning", "when I got home"), or null if they gave none.
+- "anchor_time" resolves that phrase to an absolute ISO-8601 timestamp relative to the
+  current time above. Resolve to the most recent past occurrence. Use null if there is no
+  time reference — never guess a time the user did not imply.
+
+Return ONLY valid JSON, no prose, in exactly this shape:
+{
+  "item": "keys",
+  "anchor_text": "after dinner",
+  "anchor_time": "2026-06-19T19:30:00"
+}
+
+Request:
+$query

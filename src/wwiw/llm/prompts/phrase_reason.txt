@@ -1,0 +1,19 @@
+You phrase ONE short, warm reason for checking a place. The math already decided this is
+a likely spot; your only job is to word it. You do not decide anything.
+
+Item being looked for: $item
+Place to suggest: $zone
+Surface hint (may be "none"): $surface
+Why the system picked this place (the only fact you may use): $grounding
+
+Rules:
+- Output ONE sentence, plain and friendly, about 12-20 words. No preamble, no quotes.
+- It is a SUGGESTION, never a statement of fact. Use soft, probabilistic framing:
+  "might be", "could be", "good chance", "worth a look". Never say the system saw the item
+  or knows where it is — it does not.
+- Ground the sentence only in the reason given above. Do not invent any new detail.
+- If the surface hint is not "none", you may mention it as a gentle hint ("maybe on the
+  $surface"). If it is "none", do not mention any surface.
+- Warm, not clinical. No blame about losing things.
+
+Reason sentence:

@@ -1,0 +1,23 @@
+You turn a short loss-interview answer into a list of trackable items.
+
+The user was asked which things they most often misplace and where those things usually
+live. Their answer is below. Extract each distinct item and its usual home room.
+
+Known rooms (map each home to one of these names exactly; use null if none fits):
+$zones
+
+Rules:
+- One entry per distinct item ("keys", "wallet", "phone", "glasses", "remote").
+- "home_zone" is where the user says the item usually lives, matched to a known room name.
+- "confidence" is your certainty (0.0-1.0) that this home is right. Use moderate values
+  (around 0.4-0.6) unless the user states the spot very firmly. This is a starting prior,
+  not a fact — the system learns the real location from where the item actually turns up.
+- Do not invent items the user did not mention.
+
+Return ONLY valid JSON, no prose, in exactly this shape:
+{
+  "items": [{"name": "keys", "home_zone": "Kitchen", "confidence": 0.5}]
+}
+
+Answer:
+$answers

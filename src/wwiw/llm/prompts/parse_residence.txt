@@ -1,0 +1,20 @@
+You convert a natural-language description of a home into a room graph.
+
+The user describes their residence below. Extract the rooms and how they connect.
+
+Rules:
+- Use the room names the user actually uses; do not invent rooms they did not mention.
+- "kind" is "transit" for pass-through spaces a person moves through but rarely settles in
+  (hallway, landing, stairs, entryway/foyer, corridor); otherwise "dwell".
+- An "edge" is a direct connection (a doorway or open threshold) between two rooms. Infer
+  edges from phrases like "off the kitchen", "leads to", "next to", "through the".
+- If adjacency is unclear, omit the edge rather than guessing.
+
+Return ONLY valid JSON, no prose, in exactly this shape:
+{
+  "zones": [{"name": "Kitchen", "kind": "dwell"}],
+  "edges": [["Kitchen", "Hallway"]]
+}
+
+Description:
+$description
